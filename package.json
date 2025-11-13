@@ -1,0 +1,25 @@
+{
+  "name": "prueba_tecnica_back",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "esbuild src/handler.ts --bundle --platform=node --target=node20 --format=cjs --outfile=dist/handler.js",
+    "zip": "powershell -NoProfile -ExecutionPolicy Bypass -Command \"Compress-Archive -Path dist\\* -DestinationPath bundle.zip -Force\""
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.929.0",
+    "@aws-sdk/lib-dynamodb": "^3.928.0",
+    "uuid": "^13.0.0"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.157",
+    "@types/node": "^24.10.0",
+    "esbuild": "^0.27.0",
+    "typescript": "^5.9.3"
+  }
+}
