@@ -189,21 +189,6 @@ Si aparece `AccessDeniedException`, revisa permisos del rol; si `TABLE_NAME no c
 { "error": "titulo (string) es requerido" }
 ```
 
-### Pruebas con `curl`
-```bash
-# Listar
-curl "<BASE_URL>/tasks"
-
-# Crear
-curl -X POST "<BASE_URL>/tasks"   -H "Content-Type: application/json"   -d "{"titulo":"comprar café"}"
-
-# Actualizar
-curl -X POST "<BASE_URL>/tasks"   -H "Content-Type: application/json"   -d "{"id":"PEGAR_ID","titulo":"comprar café molido","completada":true}"
-
-# Preflight CORS (opcional)
-curl -i -X OPTIONS "<BASE_URL>/tasks"   -H "Origin: https://example.com"   -H "Access-Control-Request-Method: POST"
-```
-
 ---
 
 ## Esquema (DynamoDB)
