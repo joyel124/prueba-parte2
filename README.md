@@ -27,8 +27,7 @@ Cliente (curl/Postman) ──HTTP──> API Gateway (HTTP API)
 - Cuenta AWS con acceso a **Lambda**, **API Gateway (HTTP API)**, **DynamoDB**, **IAM**.
 - **Node.js 20+** y npm.
 - Región de trabajo (ej. `us-east-1`) **coincidente** entre Lambda y DynamoDB.
-- Sistema operativo: el archivo ZIP se genera con PowerShell (Windows). Más abajo hay alternativas.
-
+  
 ---
 
 ## Estructura del proyecto
