@@ -13,11 +13,11 @@ API serverless para gestionar tareas (**tasks**) con:
 ## Arquitectura
 
 ```
-Cliente (curl/Postman) ──HTTP──> API Gateway (HTTP API, payload v2)
+Cliente (curl/Postman) ──HTTP──> API Gateway (HTTP API)
                                    │
                                    └──> AWS Lambda (Node.js 20, TypeScript)
                                            │
-                                           └──> DynamoDB (tabla: tasks, PK: id String)
+                                           └──> DynamoDB (tabla: tec-practicantes-tasks, PK: id String)
 ```
 
 ---
@@ -27,14 +27,12 @@ Cliente (curl/Postman) ──HTTP──> API Gateway (HTTP API, payload v2)
 - Cuenta AWS con acceso a **Lambda**, **API Gateway (HTTP API)**, **DynamoDB**, **IAM**.
 - **Node.js 20+** y npm.
 - Región de trabajo (ej. `us-east-1`) **coincidente** entre Lambda y DynamoDB.
-- Sistema operativo: el archivo ZIP se genera con PowerShell (Windows). Más abajo hay alternativas.
 
 ---
 
 ## Estructura del proyecto
 
 ```
-/ (raíz del repo de la Parte 2)
   ├─ src/
   │   └─ handler.ts          # Lambda handler (GET/POST)
   ├─ dist/                   # build (generado)
@@ -97,28 +95,28 @@ npm run zip   # genera bundle.zip en la raíz con handler.js en la raíz del ZIP
 
 ### 1) DynamoDB — crear tabla
 - **DynamoDB > Tables > Create table**
-    - **Table name**: `tec-practicantes-tasks`
-    - **Partition key**: `id` (String)
-    - Billing: **On-demand**
+  - **Table name**: `tec-practicantes-tasks`
+  - **Partition key**: `id` (String)
+  - Billing: **On-demand**
 
 ### 2) IAM — rol para Lambda
 - **IAM > Roles > Create role** (Use case: **Lambda**)
 - Permisos:
-    - **AWSLambdaBasicExecutionRole** (logs en CloudWatch)
-    - **DynamoDBFullAccess** (o crear política personalizada con `Scan`, `PutItem`, `UpdateItem`, `DescribeTable` sobre tu tabla)
+  - **AWSLambdaBasicExecutionRole** (logs en CloudWatch)
+  - **DynamoDBFullAccess** (o crear política personalizada con `Scan`, `PutItem`, `UpdateItem`, `DescribeTable` sobre la tabla)
 
 ### 3) Lambda — crear función y subir ZIP
 - **Lambda > Create function**
-    - *Desde Cero*, **Runtime: Node.js 20.x**
-    - **Permissions**: usar el **rol** creado arriba
+  - *Desde Cero*, **Runtime: Node.js 20.x**
+  - **Permissions**: usar el **rol** creado arriba
 - En la función:
-    - **Code > Upload from > .zip file** → subir `bundle.zip` → **Save**
-    - **Runtime settings > Edit**
-        - **Handler**: `handler.handler`  ← (archivo `handler.js` + export `handler`)
-    - **Configuration > Environment variables > Edit**
-        - `TABLE_NAME = tec-practicantes-tasks`
-    - **General configuration > Edit**
-        - Memory: **256 MB**, Timeout: **10 s**
+  - **Code > Upload from > .zip file** → subir `bundle.zip` → **Save**
+  - **Runtime settings > Edit**
+    - **Handler**: `handler.handler`  ← (archivo `handler.js` + export `handler`)
+  - **Configuration > Environment variables > Edit**
+    - `TABLE_NAME = tec-practicantes-tasks`
+  - **General configuration > Edit**
+    - Memory: **256 MB**, Timeout: **10 s**
 
 ### 4) Probar Lambda (sin API)
 Crea eventos de prueba:
@@ -148,17 +146,17 @@ Deberías recibir **200** (éxito) o **400** (validación).
 Si aparece `AccessDeniedException`, revisa permisos del rol; si `TABLE_NAME no configurado`, revisa la variable de entorno.
 
 ### 5) API Gateway (HTTP API) — trigger y rutas
-- En tu **Lambda**, clic **Add trigger** → **API Gateway** → **Create an API** → **HTTP API** → **Add**
-- Ir a **API Gateway > tu HTTP API > Routes**
-    - **Create route** → Method: **GET**, Path: **/tasks** → Integration: tu Lambda
-    - **Create route** → Method: **POST**, Path: **/tasks** → Integration: tu Lambda
-- **CORS** (en tu HTTP API):
-    - Allow origins: `*`
-    - Allow methods: `GET, POST, OPTIONS`
-    - Allow headers: `content-type`
+- En el **Lambda**, clic **Add trigger** → **API Gateway** → **Create an API** → **HTTP API** → **Add**
+- Ir a **API Gateway > HTTP API > Routes**
+  - **Create route** → Method: **GET**, Path: **/tasks** → Integration: Lambda
+  - **Create route** → Method: **POST**, Path: **/tasks** → Integration: Lambda
+- **CORS** (en HTTP API):
+  - Allow origins: `*`
+  - Allow methods: `GET, POST, OPTIONS`
+  - Allow headers: `content-type`
 - **Stages**:
-    - Para URL **sin** sufijo, crea el stage especial **`$default`** con **Auto-deploy ON**  
-      → URL base: `https://<api-id>.execute-api.<region>.amazonaws.com`
+  - Para URL **sin** sufijo, crea el stage especial **`$default`** con **Auto-deploy ON**  
+    → URL base: `https://<api-id>.execute-api.<region>.amazonaws.com`
 
 ---
 
@@ -189,21 +187,6 @@ Si aparece `AccessDeniedException`, revisa permisos del rol; si `TABLE_NAME no c
 { "error": "titulo (string) es requerido" }
 ```
 
-### Pruebas con `curl`
-```bash
-# Listar
-curl "<BASE_URL>/tasks"
-
-# Crear
-curl -X POST "<BASE_URL>/tasks"   -H "Content-Type: application/json"   -d "{"titulo":"comprar café"}"
-
-# Actualizar
-curl -X POST "<BASE_URL>/tasks"   -H "Content-Type: application/json"   -d "{"id":"PEGAR_ID","titulo":"comprar café molido","completada":true}"
-
-# Preflight CORS (opcional)
-curl -i -X OPTIONS "<BASE_URL>/tasks"   -H "Origin: https://example.com"   -H "Access-Control-Request-Method: POST"
-```
-
 ---
 
 ## Esquema (DynamoDB)
@@ -223,24 +206,3 @@ Item:
 - **200**: éxito (listar / crear / actualizar)
 - **400**: validación o error controlado
 - Headers: `Content-Type: application/json` y CORS (`Access-Control-Allow-*`)
-
----
-
-## Problemas frecuentes
-
-- **`Not Found`**:
-    - Estás usando base URL de un stage distinto. Verifica en **Stages → Invoke URL**.
-    - Asegura que existan **GET /tasks** y **POST /tasks** en **Routes**.
-    - Si Auto-deploy está OFF, crea un **Deployment** para el stage.
-
-- **`Runtime.InvalidHandler`**:
-    - El ZIP debe tener **handler.js en la raíz** del ZIP y el Handler ser `handler.handler`.
-
-- **`AccessDeniedException`** (DynamoDB):
-    - El rol debe permitir `Scan`, `PutItem`, `UpdateItem`, `DescribeTable` sobre **tu tabla**.
-
-- **`TABLE_NAME no configurado`**:
-    - Agrega `TABLE_NAME=<nombre_de_tu_tabla>` en **Environment variables** de la Lambda.
-
-- **CORS en navegador**:
-    - Habilita CORS en API Gateway y tu Lambda ya responde a `OPTIONS`.
