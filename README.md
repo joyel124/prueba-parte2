@@ -33,7 +33,6 @@ Cliente (curl/Postman) ──HTTP──> API Gateway (HTTP API)
 ## Estructura del proyecto
 
 ```
-/ (raíz del repo de la Parte 2)
   ├─ src/
   │   └─ handler.ts          # Lambda handler (GET/POST)
   ├─ dist/                   # build (generado)
