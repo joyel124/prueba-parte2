@@ -3,16 +3,19 @@
 API serverless para gestionar tareas (**tasks**) con:
 - **GET /tasks** → lista todas las tareas.
 - **POST /tasks** → crea o actualiza una tarea.
-- Validación: `titulo` (string) requerido.
-- Defaults: `completada=false`.
+- Validación:
+  - **Crear**: `titulo` (string no vacío) es **obligatorio**.
+  - **Actualizar**: `id` es obligatorio y se debe enviar **al menos uno** de `titulo` o `completada`.
+- Defaults:
+  - Al crear, si no se envía `completada`, se asume `false`.
+  - Al actualizar, cualquier campo que **no** se envíe mantiene su valor actual.
 - Códigos: **200** éxito / **400** validación o errores controlados.
-
 
 ---
 
 ## Arquitectura
 
-```
+```text
 Cliente (curl/Postman) ──HTTP──> API Gateway (HTTP API)
                                    │
                                    └──> AWS Lambda (Node.js 20, TypeScript)
@@ -32,7 +35,7 @@ Cliente (curl/Postman) ──HTTP──> API Gateway (HTTP API)
 
 ## Estructura del proyecto
 
-```
+```text
   ├─ src/
   │   └─ handler.ts          # Lambda handler (GET/POST)
   ├─ dist/                   # build (generado)
@@ -89,6 +92,7 @@ npm install
 npm run build
 npm run zip   # genera bundle.zip en la raíz con handler.js en la raíz del ZIP
 ```
+
 ---
 
 ## Despliegue (Consola AWS)
@@ -112,7 +116,7 @@ npm run zip   # genera bundle.zip en la raíz con handler.js en la raíz del ZIP
 - En la función:
   - **Code > Upload from > .zip file** → subir `bundle.zip` → **Save**
   - **Runtime settings > Edit**
-    - **Handler**: `handler.handler`  ← (archivo `handler.js` + export `handler`)
+    - **Handler**: `handler.handler`
   - **Configuration > Environment variables > Edit**
     - `TABLE_NAME = tec-practicantes-tasks`
   - **General configuration > Edit**
@@ -142,8 +146,30 @@ Crea eventos de prueba:
 }
 ```
 
+**POST /tasks (actualizar solo completada)**
+```json
+{
+  "version": "2.0",
+  "routeKey": "POST /tasks",
+  "rawPath": "/tasks",
+  "requestContext": { "http": { "method": "POST" } },
+  "body": "{\"id\":\"<uuid-existente>\",\"completada\":true}"
+}
+```
+
+**POST /tasks (actualizar solo titulo)**
+```json
+{
+  "version": "2.0",
+  "routeKey": "POST /tasks",
+  "rawPath": "/tasks",
+  "requestContext": { "http": { "method": "POST" } },
+  "body": "{\"id\":\"<uuid-existente>\",\"titulo\":\"nuevo título\"}"
+}
+```
+
 Deberías recibir **200** (éxito) o **400** (validación).  
-Si aparece `AccessDeniedException`, revisa permisos del rol; si `TABLE_NAME no configurado`, revisa la variable de entorno.
+Si aparece `AccessDeniedException`, revisa permisos del rol; si `TABLE_NAME is not configured`, revisa la variable de entorno.
 
 ### 5) API Gateway (HTTP API) — trigger y rutas
 - En el **Lambda**, clic **Add trigger** → **API Gateway** → **Create an API** → **HTTP API** → **Add**
@@ -162,8 +188,8 @@ Si aparece `AccessDeniedException`, revisa permisos del rol; si `TABLE_NAME no c
 
 ## Endpoints y ejemplos
 
-**Base URL** (elige según stage):
-- Con **`$default`**: `https://<api-id>.execute-api.<region>.amazonaws.com`
+**Base URL** (con stage `$default`):  
+`https://<api-id>.execute-api.<region>.amazonaws.com`
 
 ### GET `/tasks`
 **200 OK**
@@ -174,17 +200,37 @@ Si aparece `AccessDeniedException`, revisa permisos del rol; si `TABLE_NAME no c
 ```
 
 ### POST `/tasks`
-- **Crear**: body `{ "titulo": "..." }`
-- **Actualizar**: body `{ "id": "uuid", "titulo": "...", "completada": true }`
+
+- **Crear**: body
+  ```json
+  { "titulo": "comprar café" }
+  ```
+- **Actualizar solo completada**:
+  ```json
+  { "id": "uuid-1", "completada": true }
+  ```
+- **Actualizar solo titulo**:
+  ```json
+  { "id": "uuid-1", "titulo": "comprar leche" }
+  ```
+- **Actualizar ambos campos**:
+  ```json
+  { "id": "uuid-1", "titulo": "comprar leche", "completada": true }
+  ```
 
 **200 OK (crear)**
 ```json
 { "id": "uuid-generado", "titulo": "comprar café", "completada": false }
 ```
 
-**400 Bad Request (ej.)**
+**400 Bad Request (ej. crear sin titulo)**
 ```json
-{ "error": "titulo (string) es requerido" }
+{ "error": "Field 'titulo' (string) is required" }
+```
+
+**400 Bad Request (ej. actualizar sin campos editables)**
+```json
+{ "error": "You must send at least one of 'titulo' or 'completada' to update a task" }
 ```
 
 ---
