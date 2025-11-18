@@ -13,11 +13,11 @@ API serverless para gestionar tareas (**tasks**) con:
 ## Arquitectura
 
 ```
-Cliente (curl/Postman) ──HTTP──> API Gateway (HTTP API, payload v2)
+Cliente (curl/Postman) ──HTTP──> API Gateway (HTTP API)
                                    │
                                    └──> AWS Lambda (Node.js 20, TypeScript)
                                            │
-                                           └──> DynamoDB (tabla: tasks, PK: id String)
+                                           └──> DynamoDB (tabla: tec-practicantes-tasks, PK: id String)
 ```
 
 ---
@@ -105,7 +105,7 @@ npm run zip   # genera bundle.zip en la raíz con handler.js en la raíz del ZIP
 - **IAM > Roles > Create role** (Use case: **Lambda**)
 - Permisos:
     - **AWSLambdaBasicExecutionRole** (logs en CloudWatch)
-    - **DynamoDBFullAccess** (o crear política personalizada con `Scan`, `PutItem`, `UpdateItem`, `DescribeTable` sobre tu tabla)
+    - **DynamoDBFullAccess** (o crear política personalizada con `Scan`, `PutItem`, `UpdateItem`, `DescribeTable` sobre la tabla)
 
 ### 3) Lambda — crear función y subir ZIP
 - **Lambda > Create function**
@@ -148,11 +148,11 @@ Deberías recibir **200** (éxito) o **400** (validación).
 Si aparece `AccessDeniedException`, revisa permisos del rol; si `TABLE_NAME no configurado`, revisa la variable de entorno.
 
 ### 5) API Gateway (HTTP API) — trigger y rutas
-- En tu **Lambda**, clic **Add trigger** → **API Gateway** → **Create an API** → **HTTP API** → **Add**
-- Ir a **API Gateway > tu HTTP API > Routes**
-    - **Create route** → Method: **GET**, Path: **/tasks** → Integration: tu Lambda
-    - **Create route** → Method: **POST**, Path: **/tasks** → Integration: tu Lambda
-- **CORS** (en tu HTTP API):
+- En el **Lambda**, clic **Add trigger** → **API Gateway** → **Create an API** → **HTTP API** → **Add**
+- Ir a **API Gateway > HTTP API > Routes**
+    - **Create route** → Method: **GET**, Path: **/tasks** → Integration: Lambda
+    - **Create route** → Method: **POST**, Path: **/tasks** → Integration: Lambda
+- **CORS** (en HTTP API):
     - Allow origins: `*`
     - Allow methods: `GET, POST, OPTIONS`
     - Allow headers: `content-type`
@@ -208,24 +208,3 @@ Item:
 - **200**: éxito (listar / crear / actualizar)
 - **400**: validación o error controlado
 - Headers: `Content-Type: application/json` y CORS (`Access-Control-Allow-*`)
-
----
-
-## Problemas frecuentes
-
-- **`Not Found`**:
-    - Estás usando base URL de un stage distinto. Verifica en **Stages → Invoke URL**.
-    - Asegura que existan **GET /tasks** y **POST /tasks** en **Routes**.
-    - Si Auto-deploy está OFF, crea un **Deployment** para el stage.
-
-- **`Runtime.InvalidHandler`**:
-    - El ZIP debe tener **handler.js en la raíz** del ZIP y el Handler ser `handler.handler`.
-
-- **`AccessDeniedException`** (DynamoDB):
-    - El rol debe permitir `Scan`, `PutItem`, `UpdateItem`, `DescribeTable` sobre **tu tabla**.
-
-- **`TABLE_NAME no configurado`**:
-    - Agrega `TABLE_NAME=<nombre_de_tu_tabla>` en **Environment variables** de la Lambda.
-
-- **CORS en navegador**:
-    - Habilita CORS en API Gateway y tu Lambda ya responde a `OPTIONS`.
